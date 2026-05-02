@@ -2,7 +2,7 @@
 
 Yahoo Finance `DataFeed` adapter for [`@livefolio/sdk`](https://github.com/livefolio/sdk) v0.4. Wraps [`yahoo-finance2`](https://github.com/gadicc/node-yahoo-finance2) to implement the SDK's `DataFeed.bars` interface — resolves an `Asset` to a Yahoo symbol, calls the `chart` endpoint, normalizes the response to v0.4 `Bar[]` (UTC-midnight timestamps, OHLCV from Yahoo's adjusted-close path), and applies a structural completeness filter that drops in-progress today bars without hardcoding US-market hours. A range-aware in-memory cache deduplicates fetches inside a single backtest.
 
-> **Pre-1.0 — expect breaking changes.** Tracks the SDK's v0.4 surface; once the SDK ships 0.4.0 the `file:../sdk` link in `devDependencies` is replaced with `^0.4.0` and this package follows.
+> **Pre-1.0 — expect breaking changes.** Tracks the SDK's v0.4 surface (`@livefolio/sdk@^0.4.0`).
 
 ## Install
 
