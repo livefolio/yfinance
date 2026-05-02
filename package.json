@@ -1,0 +1,50 @@
+{
+  "name": "@livefolio/datafeed-yfinance",
+  "version": "0.1.0",
+  "description": "Yahoo Finance DataFeed adapter for @livefolio/sdk v0.4. Implements DataFeed.bars over yahoo-finance2.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fixtures:record": "tsx test/fixtures/record.ts"
+  },
+  "peerDependencies": {
+    "@livefolio/sdk": "^0.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@livefolio/sdk": "file:../sdk",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "3.8.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.8",
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^3"
+  },
+  "dependencies": {
+    "yahoo-finance2": "^2"
+  }
+}
