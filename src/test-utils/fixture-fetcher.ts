@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Bar, DateRange, Frequency } from '@livefolio/sdk/interfaces';
+import type { Bar, DateRange, Frequency } from '@livefolio/sdk';
 import type { YfinanceFetcher } from '../yfinance-data-feed';
 
 type RawBar = { t: string; open: number; high: number; low: number; close: number; volume: number };

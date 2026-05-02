@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Asset } from '@livefolio/sdk/interfaces';
+import type { Asset } from '@livefolio/sdk';
 import { assetToYahooSymbol } from './asset';
 
 describe('assetToYahooSymbol', () => {

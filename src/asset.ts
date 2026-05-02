@@ -1,4 +1,4 @@
-import type { Asset } from '@livefolio/sdk/interfaces';
+import type { Asset } from '@livefolio/sdk';
 
 /**
  * Resolves a v0.4 `Asset` to the symbol string `yahoo-finance2` expects.

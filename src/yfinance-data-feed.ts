@@ -1,4 +1,4 @@
-import type { Asset, Bar, DataFeed, DateRange, Frequency } from '@livefolio/sdk/interfaces';
+import type { Asset, Bar, DataFeed, DateRange, Frequency } from '@livefolio/sdk';
 import { assetToYahooSymbol } from './asset';
 import { fetchYahooBars } from './yahoo-client';
 import { BarCache } from './cache';

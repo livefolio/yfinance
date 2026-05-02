@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Asset, Bar, DateRange } from '@livefolio/sdk/interfaces';
+import type { Asset, Bar, DateRange } from '@livefolio/sdk';
 import { YfinanceDataFeed } from './yfinance-data-feed';
 
 const utc = (s: string) => new Date(`${s}T00:00:00Z`);

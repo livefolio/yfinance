@@ -1,4 +1,4 @@
-import type { Bar, DateRange, Frequency } from '@livefolio/sdk/interfaces';
+import type { Bar, DateRange, Frequency } from '@livefolio/sdk';
 
 type Entry = { range: DateRange; bars: Bar[] };
 

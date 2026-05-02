@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Bar } from '@livefolio/sdk/interfaces';
+import type { Bar } from '@livefolio/sdk';
 import { BarCache } from './cache';
 
 const utc = (s: string) => new Date(`${s}T00:00:00Z`);

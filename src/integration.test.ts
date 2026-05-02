@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fromSpec, type TacticalSpec } from '@livefolio/sdk/tactical';
-import { runBacktest } from '@livefolio/sdk/strategy';
-import { FeatureRuntime } from '@livefolio/sdk/features';
-import { USEquityCalendar, MemoryFeatureCache, BacktestExecutor } from '@livefolio/sdk/reference';
-import type { Asset, Bar, DateRange } from '@livefolio/sdk/interfaces';
+import {
+  fromSpec,
+  runBacktest,
+  FeatureRuntime,
+  USEquityCalendar,
+  MemoryFeatureCache,
+  BacktestExecutor,
+} from '@livefolio/sdk';
+import type { Asset, Bar, DateRange, TacticalSpec } from '@livefolio/sdk';
 import { YfinanceDataFeed } from './yfinance-data-feed';
 import { fixtureFetcher } from './test-utils/fixture-fetcher';
 

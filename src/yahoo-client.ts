@@ -1,5 +1,5 @@
 import YahooFinance from 'yahoo-finance2';
-import type { Bar, DateRange, Frequency } from '@livefolio/sdk/interfaces';
+import type { Bar, DateRange, Frequency } from '@livefolio/sdk';
 
 const yf = new YahooFinance();
 
