@@ -27,7 +27,12 @@ function multiFixtureFetcher(map: Record<string, string>) {
   for (const [sym, path] of Object.entries(map)) {
     fetchers.set(sym, fixtureFetcher(path));
   }
-  return async (symbol: string, range: DateRange, freq: '1m' | '5m' | '15m' | '1h' | '1d', opts: { includeIncompleteToday: boolean }) => {
+  return async (
+    symbol: string,
+    range: DateRange,
+    freq: '1m' | '5m' | '15m' | '1h' | '1d',
+    opts: { includeIncompleteToday: boolean },
+  ) => {
     const f = fetchers.get(symbol);
     if (!f) throw new Error(`integration test: no fixture configured for symbol "${symbol}"`);
     return f(symbol, range, freq, opts);

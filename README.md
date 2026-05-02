@@ -1,3 +1,49 @@
 # @livefolio/datafeed-yfinance
 
-Yahoo Finance `DataFeed` adapter for [`@livefolio/sdk`](../sdk) v0.4. Implements `DataFeed.bars` over [`yahoo-finance2`](https://github.com/gadicc/node-yahoo-finance2). Pre-1.0; expect breaking changes.
+Yahoo Finance `DataFeed` adapter for [`@livefolio/sdk`](https://github.com/livefolio/sdk) v0.4. Wraps [`yahoo-finance2`](https://github.com/gadicc/node-yahoo-finance2) to implement the SDK's `DataFeed.bars` interface — resolves an `Asset` to a Yahoo symbol, calls the `chart` endpoint, normalizes the response to v0.4 `Bar[]` (UTC-midnight timestamps, OHLCV from Yahoo's adjusted-close path), and applies a structural completeness filter that drops in-progress today bars without hardcoding US-market hours. A range-aware in-memory cache deduplicates fetches inside a single backtest.
+
+> **Pre-1.0 — expect breaking changes.** Tracks the SDK's v0.4 surface; once the SDK ships 0.4.0 the `file:../sdk` link in `devDependencies` is replaced with `^0.4.0` and this package follows.
+
+## Install
+
+```sh
+npm install @livefolio/datafeed-yfinance
+```
+
+`@livefolio/sdk@^0.4.0` is a peer dependency — install it alongside.
+
+## Usage
+
+```ts
+import { YfinanceDataFeed } from '@livefolio/datafeed-yfinance';
+import { FeatureRuntime, MemoryFeatureCache } from '@livefolio/sdk';
+
+const dataFeed = new YfinanceDataFeed();
+const runtime = new FeatureRuntime({
+  dataFeed,
+  featureCache: new MemoryFeatureCache(),
+  range: { from: new Date('2024-01-01'), to: new Date('2024-12-31') },
+  freq: '1d',
+});
+```
+
+Pass `runtime` into `tactical.fromSpec` (or any v0.4 strategy) and the SDK's `runBacktest` does the rest.
+
+## Capabilities
+
+| Capability | Status | Notes |
+|---|---|---|
+| `bars` | OK | Daily (`1d`) only |
+| `fundamentals` | not implemented | Optional on the interface; absent on the instance |
+| `events` | not implemented | Optional on the interface; absent on the instance |
+| Frequencies | `1d` only | Other frequencies throw |
+
+Yahoo's adjusted-close path bakes splits and dividends into the close (and OHLCV via the `close` field) — the v0.4 spec's accepted fidelity bar.
+
+## Stability
+
+Pre-1.0. The class shape (`YfinanceDataFeed`) is stable; constructor options may grow additively. Any breaking change to the `Bar` shape would come from the SDK's `Bar` type, not from this package.
+
+## License
+
+MIT

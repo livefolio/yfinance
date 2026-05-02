@@ -76,9 +76,9 @@ describe('fetchYahooBars', () => {
   });
 
   it('throws on non-1d frequencies', async () => {
-    await expect(
-      fetchYahooBars('SPY', { from: utc('2024-04-01'), to: utc('2024-04-02') }, '5m'),
-    ).rejects.toThrow(/only '1d' is supported/);
+    await expect(fetchYahooBars('SPY', { from: utc('2024-04-01'), to: utc('2024-04-02') }, '5m')).rejects.toThrow(
+      /only '1d' is supported/,
+    );
   });
 
   it('drops rows with any null OHLC field', async () => {

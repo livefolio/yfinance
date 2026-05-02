@@ -76,8 +76,8 @@ describe('BarCache', () => {
   it('set: throws on partial overlap (YAGNI per plan)', () => {
     const c = new BarCache();
     c.set('SPY', '1d', { from: utc('2024-04-02'), to: utc('2024-04-04') }, SPY_2024.slice(1, 4));
-    expect(() =>
-      c.set('SPY', '1d', { from: utc('2024-04-03'), to: utc('2024-04-05') }, SPY_2024.slice(2, 5)),
-    ).toThrow(/partial overlap/i);
+    expect(() => c.set('SPY', '1d', { from: utc('2024-04-03'), to: utc('2024-04-05') }, SPY_2024.slice(2, 5))).toThrow(
+      /partial overlap/i,
+    );
   });
 });
