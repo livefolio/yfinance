@@ -45,6 +45,6 @@
     "vitest": "^3"
   },
   "dependencies": {
-    "yahoo-finance2": "^2"
+    "yahoo-finance2": "^3"
   }
 }
