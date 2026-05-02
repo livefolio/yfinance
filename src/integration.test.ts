@@ -49,7 +49,7 @@ describe('integration: YfinanceDataFeed + tactical/v0 + runBacktest', () => {
     });
 
     const spec: TacticalSpec = {
-      kind: 'tactical/v0',
+      kind: 'tactical/v1',
       universe: [SPY_REF, IEF_REF],
       features: [
         { id: 'spy_price', kind: 'price', asset: SPY_REF },
