@@ -15,9 +15,9 @@ import { fetchYahooBars } from '../../src/yahoo-client';
 type FixtureRequest = { symbol: string; from: string; to: string };
 
 const FIXTURES: FixtureRequest[] = [
-  { symbol: 'SPY', from: '2020-01-01', to: '2024-12-31' },
-  { symbol: 'QQQ', from: '2020-01-01', to: '2024-12-31' },
-  { symbol: 'IEF', from: '2020-01-01', to: '2024-12-31' },
+  { symbol: 'SPY', from: '2020-01-01', to: '2026-05-02' },
+  { symbol: 'QQQ', from: '2020-01-01', to: '2026-05-02' },
+  { symbol: 'IEF', from: '2020-01-01', to: '2026-05-02' },
 ];
 
 async function main(): Promise<void> {
