@@ -49,13 +49,15 @@ describe('fetchYahooBars', () => {
     expect(out[0]).toMatchObject({ open: 100, high: 101, low: 99, close: 100.5, volume: 1000 });
   });
 
-  it('uses adjclose for close field when available (split/dividend-adjusted)', async () => {
+  it('full adjustment: close = adjclose AND OHL scaled by the same ratio (volume raw)', async () => {
+    // Day 1: ratio = 80.4 / 100.5 = 0.8 — applies uniformly to OHL.
+    // Day 2: ratio = 101.5 / 101.5 = 1.0 — no adjustment.
     quotes([
       {
         date: dt('2024-04-01', '13:30:00'),
         open: 100,
-        high: 101,
-        low: 99,
+        high: 110,
+        low: 95,
         close: 100.5,
         volume: 1000,
         adjclose: 80.4,
@@ -66,13 +68,38 @@ describe('fetchYahooBars', () => {
         high: 102,
         low: 100,
         close: 101.5,
-        volume: 1000,
-        adjclose: 81.2,
+        volume: 1100,
+        adjclose: 101.5,
       },
     ]);
     const out = await fetchYahooBars('SPY', { from: utc('2024-04-01'), to: utc('2024-04-02') }, '1d');
-    expect(out[0]?.close).toBe(80.4);
-    expect(out[1]?.close).toBe(81.2);
+
+    // Day 1: scaled by 0.8.
+    expect(out[0]?.close).toBeCloseTo(80.4, 10);
+    expect(out[0]?.open).toBeCloseTo(80.0, 10);
+    expect(out[0]?.high).toBeCloseTo(88.0, 10);
+    expect(out[0]?.low).toBeCloseTo(76.0, 10);
+    expect(out[0]?.volume).toBe(1000);
+    // Internal consistency: high ≥ close ≥ low after adjustment.
+    expect(out[0]!.high).toBeGreaterThanOrEqual(out[0]!.close);
+    expect(out[0]!.close).toBeGreaterThanOrEqual(out[0]!.low);
+
+    // Day 2: ratio = 1.0, raw OHL passes through.
+    expect(out[1]?.close).toBe(101.5);
+    expect(out[1]?.open).toBe(101);
+    expect(out[1]?.high).toBe(102);
+    expect(out[1]?.low).toBe(100);
+    expect(out[1]?.volume).toBe(1100);
+  });
+
+  it('full adjustment: ratio = 1 when adjclose is missing (raw OHLC pass-through)', async () => {
+    quotes([
+      { date: dt('2024-04-01', '13:30:00'), open: 100, high: 101, low: 99, close: 100, volume: 1000 },
+      { date: dt('2024-04-02', '13:30:00'), open: 101, high: 102, low: 100, close: 101, volume: 1100 },
+    ]);
+    const out = await fetchYahooBars('SPY', { from: utc('2024-04-01'), to: utc('2024-04-02') }, '1d');
+    expect(out[0]).toMatchObject({ open: 100, high: 101, low: 99, close: 100, volume: 1000 });
+    expect(out[1]).toMatchObject({ open: 101, high: 102, low: 100, close: 101, volume: 1100 });
   });
 
   it('throws on non-1d frequencies', async () => {

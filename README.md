@@ -38,7 +38,7 @@ Pass `runtime` into `tactical.fromSpec` (or any v0.4 strategy) and the SDK's `ru
 | `events` | not implemented | Optional on the interface; absent on the instance |
 | Frequencies | `1d` only | Other frequencies throw |
 
-Yahoo's adjusted-close path bakes splits and dividends into the close (and OHLCV via the `close` field) — the v0.4 spec's accepted fidelity bar.
+**Bars are total-return-adjusted.** Yahoo's `adjclose / close` ratio is applied uniformly to OHL on each bar so splits and dividends are baked in across all four price fields (volume stays raw). This keeps `high ≥ close ≥ low` consistent across corporate-action days and matches the v0.4 spec's accepted fidelity bar. Pairing this adapter with a live broker executor isn't a supported configuration — for live trading, use the broker's own data feed (e.g. `@livefolio/datafeed-alpaca` with `@livefolio/executor-alpaca`).
 
 ## Stability
 

@@ -82,13 +82,19 @@ export async function fetchYahooBars(
     if (q.open === null || q.high === null || q.low === null || q.close === null || q.volume === null) {
       continue;
     }
-    const close = q.adjclose ?? q.close;
+    // Apply Yahoo's adjclose ratio uniformly to OHL so bars stay internally
+    // consistent (high ≥ close ≥ low) across dividend and split days. Volume is
+    // a count of units, not a price, so it stays raw. The v0.4 spec accepts
+    // total-return-adjusted bars as the fidelity bar; pairing this adapter
+    // with a live broker executor isn't a supported configuration (use the
+    // broker's own data feed for live).
+    const ratio = q.adjclose != null && q.close > 0 ? q.adjclose / q.close : 1;
     bars.push({
       t: utcMidnight(q.date),
-      open: q.open,
-      high: q.high,
-      low: q.low,
-      close,
+      open: q.open * ratio,
+      high: q.high * ratio,
+      low: q.low * ratio,
+      close: q.adjclose ?? q.close,
       volume: q.volume,
     });
   }
