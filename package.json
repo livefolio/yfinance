@@ -34,6 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@livefolio/sdk": "file:../sdk",
+    "@types/node": "^25.6.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
