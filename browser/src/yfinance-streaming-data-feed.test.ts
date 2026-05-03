@@ -46,7 +46,7 @@ function buildTickerBase64(id: string, price: number, timeMs: number, lastSize?:
 
 // --- MockWebSocket ---
 
-type WSListener = (event: any) => void;
+type WSListener = (event: unknown) => void;
 
 class MockWebSocket {
   static readonly CONNECTING = 0;
@@ -90,7 +90,7 @@ class MockWebSocket {
   simulateMessage(data: string): void {
     this.onmessage?.({ data });
   }
-  simulateError(error?: any): void {
+  simulateError(error?: unknown): void {
     this.onerror?.(error ?? new Event('error'));
   }
   simulateClose(): void {

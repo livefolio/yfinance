@@ -77,7 +77,7 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
       this.sendSubscribe();
     }
 
-    const self = this;
+    const removeSubscriber = (s: Subscriber): void => this.removeSubscriber(s);
     return {
       [Symbol.asyncIterator](): AsyncIterator<StreamingBar> {
         return {
@@ -93,7 +93,7 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
             });
           },
           return(): Promise<IteratorResult<StreamingBar>> {
-            self.removeSubscriber(subscriber);
+            removeSubscriber(subscriber);
             return Promise.resolve({ value: undefined as never, done: true });
           },
         };

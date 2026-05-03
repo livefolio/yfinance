@@ -52,11 +52,7 @@ function build(fields: number[][]): Uint8Array {
 
 describe('decodeTicker', () => {
   it('decodes id, price, and time from a minimal Ticker', () => {
-    const bytes = build([
-      encodeString(1, 'SPY'),
-      encodeFloat(2, 450.25),
-      encodeSint64Field(3, 1700000000000),
-    ]);
+    const bytes = build([encodeString(1, 'SPY'), encodeFloat(2, 450.25), encodeSint64Field(3, 1700000000000)]);
     const ticker = decodeTicker(bytes);
     expect(ticker.id).toBe('SPY');
     expect(ticker.price).toBeCloseTo(450.25, 1);
@@ -93,11 +89,7 @@ describe('decodeTicker', () => {
   });
 
   it('handles empty id, zero price, zero time', () => {
-    const bytes = build([
-      encodeString(1, ''),
-      encodeFloat(2, 0),
-      encodeSint64Field(3, 0),
-    ]);
+    const bytes = build([encodeString(1, ''), encodeFloat(2, 0), encodeSint64Field(3, 0)]);
     const ticker = decodeTicker(bytes);
     expect(ticker.id).toBe('');
     expect(ticker.price).toBe(0);
@@ -105,11 +97,7 @@ describe('decodeTicker', () => {
   });
 
   it('round-trips negative time (zigzag)', () => {
-    const bytes = build([
-      encodeString(1, 'SPY'),
-      encodeFloat(2, 1),
-      encodeSint64Field(3, -1),
-    ]);
+    const bytes = build([encodeString(1, 'SPY'), encodeFloat(2, 1), encodeSint64Field(3, -1)]);
     expect(decodeTicker(bytes).time).toBe(-1);
   });
 
@@ -125,10 +113,7 @@ describe('decodeTicker', () => {
 
   it('terminates on unknown wire type without throwing', () => {
     // Tag with wire type 3 (group start, deprecated) — decoder bails gracefully.
-    const bytes = new Uint8Array([
-      ...encodeString(1, 'SPY'),
-      ...encodeTag(99, 3),
-    ]);
+    const bytes = new Uint8Array([...encodeString(1, 'SPY'), ...encodeTag(99, 3)]);
     const ticker = decodeTicker(bytes);
     expect(ticker.id).toBe('SPY');
   });
