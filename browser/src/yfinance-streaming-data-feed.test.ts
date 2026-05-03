@@ -404,3 +404,83 @@ describe('YfinanceStreamingDataFeed — reconnect + onStatus', () => {
     }).not.toThrow();
   });
 });
+
+describe('YfinanceStreamingDataFeed — onError + close()', () => {
+  it('emits error on decode failure and continues', async () => {
+    const errors: Error[] = [];
+    const feed = makeFeed({ onError: (e) => errors.push(e) });
+    const iter = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const next = iter.next();
+    latestWS().simulateOpen();
+    latestWS().simulateMessage('not-valid-base64!!!');
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(Error);
+
+    latestWS().simulateMessage(buildTickerBase64('SPY', 1, 1700000000000));
+    const result = await next;
+    expect(result.done).toBe(false);
+    await iter.return?.();
+  });
+
+  it('emits error on WebSocket error event', () => {
+    const errors: Error[] = [];
+    const feed = makeFeed({ onError: (e) => errors.push(e) });
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateError(new Error('connection refused'));
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toMatch(/connection refused|WebSocket error/);
+  });
+
+  it('isolates throwing onError callback', () => {
+    const feed = makeFeed({
+      onError: () => {
+        throw new Error('bad listener');
+      },
+    });
+    expect(() => {
+      void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+      latestWS().simulateOpen();
+      latestWS().simulateMessage('not-valid-base64!!!');
+    }).not.toThrow();
+  });
+
+  it('close() terminates pending iterators with done:true', async () => {
+    const feed = makeFeed();
+    const iter = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const next = iter.next();
+    latestWS().simulateOpen();
+
+    feed.close();
+    const result = await next;
+    expect(result.done).toBe(true);
+  });
+
+  it('close() prevents reconnect', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    feed.close();
+
+    vi.advanceTimersByTime(10000);
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('subscribe() after close() returns an immediately-done iterator', async () => {
+    const feed = makeFeed();
+    feed.close();
+    const iter = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const result = await iter.next();
+    expect(result.done).toBe(true);
+    expect(MockWebSocket.instances).toHaveLength(0);
+  });
+
+  it('close() is idempotent', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    expect(() => {
+      feed.close();
+      feed.close();
+    }).not.toThrow();
+  });
+});

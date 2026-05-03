@@ -21,6 +21,7 @@ export type YfinanceStreamingDataFeedOptions = {
   reconnectBaseDelayMs?: number;
   maxReconnectDelayMs?: number;
   onStatus?: (status: 'connected' | 'reconnecting' | 'disconnected') => void;
+  onError?: (error: Error) => void;
 };
 
 export class YfinanceStreamingDataFeed implements StreamingDataFeed {
@@ -29,11 +30,13 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
   private readonly reconnectBaseDelayMs: number;
   private readonly maxReconnectDelayMs: number;
   private readonly onStatus: ((s: 'connected' | 'reconnecting' | 'disconnected') => void) | undefined;
+  private readonly onError: ((e: Error) => void) | undefined;
   private readonly subscribers = new Set<Subscriber>();
   private readonly refCounts = new Map<string, number>();
   private socket: WebSocket | null = null;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private closed = false;
 
   constructor(opts: YfinanceStreamingDataFeedOptions = {}) {
     this.url = opts.url ?? DEFAULT_URL;
@@ -41,9 +44,20 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
     this.reconnectBaseDelayMs = opts.reconnectBaseDelayMs ?? 500;
     this.maxReconnectDelayMs = opts.maxReconnectDelayMs ?? 8000;
     this.onStatus = opts.onStatus;
+    this.onError = opts.onError;
   }
 
   subscribe(assets: ReadonlyArray<Asset>): AsyncIterable<StreamingBar> {
+    if (this.closed) {
+      return {
+        [Symbol.asyncIterator](): AsyncIterator<StreamingBar> {
+          return {
+            next: () => Promise.resolve({ value: undefined as never, done: true }),
+            return: () => Promise.resolve({ value: undefined as never, done: true }),
+          };
+        },
+      };
+    }
     const symbolToAsset = new Map<string, Asset>();
     for (const asset of assets) {
       symbolToAsset.set(assetToYahooSymbol(asset), asset);
@@ -87,6 +101,24 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
     };
   }
 
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.clearReconnect();
+    for (const subscriber of this.subscribers) {
+      if (subscriber.done) continue;
+      subscriber.done = true;
+      if (subscriber.waiter) {
+        const waiter = subscriber.waiter;
+        subscriber.waiter = null;
+        waiter.resolve({ value: undefined as never, done: true });
+      }
+    }
+    this.subscribers.clear();
+    this.refCounts.clear();
+    this.closeSocket();
+  }
+
   private openSocketIfNeeded(): void {
     if (this.socket) return;
     this.clearReconnect();
@@ -102,16 +134,22 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
     };
     socket.onmessage = (event: MessageEvent): void => {
       if (typeof event.data !== 'string') return;
-      const bytes = base64ToBytes(event.data);
-      const ticker = decodeTicker(bytes);
-      if (ticker.id === '') return;
-      this.dispatchTick(ticker);
+      try {
+        const bytes = base64ToBytes(event.data);
+        const ticker = decodeTicker(bytes);
+        if (ticker.id === '') return;
+        this.dispatchTick(ticker);
+      } catch (err) {
+        this.emitError(err);
+      }
     };
-    socket.onerror = (): void => {};
+    socket.onerror = (event: Event): void => {
+      this.emitError(event instanceof Error ? event : new Error('WebSocket error'));
+    };
     socket.onclose = (): void => {
       this.socket = null;
       this.emitStatus('disconnected');
-      if (this.subscribers.size > 0) {
+      if (!this.closed && this.subscribers.size > 0) {
         this.scheduleReconnect();
       }
     };
@@ -123,6 +161,16 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
       this.onStatus(s);
     } catch {
       // Listener errors are swallowed to keep the feed alive.
+    }
+  }
+
+  private emitError(error: unknown): void {
+    if (!this.onError) return;
+    const err = error instanceof Error ? error : new Error(String(error));
+    try {
+      this.onError(err);
+    } catch {
+      // Listener errors are swallowed.
     }
   }
 
