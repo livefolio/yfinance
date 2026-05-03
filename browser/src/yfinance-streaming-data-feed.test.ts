@@ -291,3 +291,116 @@ describe('YfinanceStreamingDataFeed — multi-subscriber refcount', () => {
     await iterB.return?.();
   });
 });
+
+describe('YfinanceStreamingDataFeed — reconnect + onStatus', () => {
+  it('emits status lifecycle on initial connect', () => {
+    const statuses: string[] = [];
+    const feed = makeFeed({ onStatus: (s) => statuses.push(s) });
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    expect(statuses).toEqual(['reconnecting']);
+    latestWS().simulateOpen();
+    expect(statuses).toEqual(['reconnecting', 'connected']);
+    latestWS().simulateClose();
+    expect(statuses).toEqual(['reconnecting', 'connected', 'disconnected']);
+  });
+
+  it('reconnects with exponential backoff', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    latestWS().simulateClose();
+
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    vi.advanceTimersByTime(499);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    // Second failure → backs off to 1000 ms
+    latestWS().simulateClose();
+    vi.advanceTimersByTime(999);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(3);
+
+    // Third failure → 2000 ms
+    latestWS().simulateClose();
+    vi.advanceTimersByTime(2000);
+    expect(MockWebSocket.instances).toHaveLength(4);
+  });
+
+  it('caps reconnect delay at maxReconnectDelayMs', () => {
+    const feed = makeFeed({ reconnectBaseDelayMs: 1000, maxReconnectDelayMs: 4000 });
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+
+    // Drive several failed reconnects
+    for (let i = 0; i < 6; i++) {
+      latestWS().simulateClose();
+      vi.advanceTimersByTime(4000);
+    }
+    // Next attempt should still fire within 4000 ms (capped)
+    const before = MockWebSocket.instances.length;
+    latestWS().simulateClose();
+    vi.advanceTimersByTime(4000);
+    expect(MockWebSocket.instances.length).toBe(before + 1);
+  });
+
+  it('resets backoff on successful connect', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    latestWS().simulateClose();
+
+    vi.advanceTimersByTime(500);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    latestWS().simulateOpen();
+    latestWS().simulateClose();
+
+    // After successful connect+close, next attempt should be 500 ms again
+    vi.advanceTimersByTime(500);
+    expect(MockWebSocket.instances).toHaveLength(3);
+  });
+
+  it('re-sends full subscription after reconnect', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY, QQQ])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    latestWS().simulateClose();
+
+    vi.advanceTimersByTime(500);
+    latestWS().simulateOpen();
+
+    expect(latestWS().sent).toEqual([JSON.stringify({ subscribe: ['SPY', 'QQQ'] })]);
+  });
+
+  it('keeps iterator alive across reconnect gap', async () => {
+    const feed = makeFeed();
+    const iter = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const next = iter.next();
+    latestWS().simulateOpen();
+    latestWS().simulateClose();
+
+    vi.advanceTimersByTime(500);
+    latestWS().simulateOpen();
+    latestWS().simulateMessage(buildTickerBase64('SPY', 1, 1700000000000));
+
+    const result = await next;
+    expect(result.done).toBe(false);
+    await iter.return?.();
+  });
+
+  it('isolates throwing onStatus callback', () => {
+    const feed = makeFeed({
+      onStatus: () => {
+        throw new Error('bad');
+      },
+    });
+    expect(() => {
+      void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+      latestWS().simulateOpen();
+      latestWS().simulateClose();
+    }).not.toThrow();
+  });
+});

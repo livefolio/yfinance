@@ -18,18 +18,29 @@ type Subscriber = {
 export type YfinanceStreamingDataFeedOptions = {
   webSocketFactory?: (url: string) => WebSocket;
   url?: string;
+  reconnectBaseDelayMs?: number;
+  maxReconnectDelayMs?: number;
+  onStatus?: (status: 'connected' | 'reconnecting' | 'disconnected') => void;
 };
 
 export class YfinanceStreamingDataFeed implements StreamingDataFeed {
   private readonly url: string;
   private readonly webSocketFactory: (url: string) => WebSocket;
+  private readonly reconnectBaseDelayMs: number;
+  private readonly maxReconnectDelayMs: number;
+  private readonly onStatus: ((s: 'connected' | 'reconnecting' | 'disconnected') => void) | undefined;
   private readonly subscribers = new Set<Subscriber>();
   private readonly refCounts = new Map<string, number>();
   private socket: WebSocket | null = null;
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(opts: YfinanceStreamingDataFeedOptions = {}) {
     this.url = opts.url ?? DEFAULT_URL;
     this.webSocketFactory = opts.webSocketFactory ?? ((url) => new WebSocket(url));
+    this.reconnectBaseDelayMs = opts.reconnectBaseDelayMs ?? 500;
+    this.maxReconnectDelayMs = opts.maxReconnectDelayMs ?? 8000;
+    this.onStatus = opts.onStatus;
   }
 
   subscribe(assets: ReadonlyArray<Asset>): AsyncIterable<StreamingBar> {
@@ -78,10 +89,15 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
 
   private openSocketIfNeeded(): void {
     if (this.socket) return;
+    this.clearReconnect();
+    this.emitStatus('reconnecting');
+
     const socket = this.webSocketFactory(this.url);
     this.socket = socket;
 
     socket.onopen = (): void => {
+      this.reconnectAttempt = 0;
+      this.emitStatus('connected');
       this.sendSubscribe();
     };
     socket.onmessage = (event: MessageEvent): void => {
@@ -94,7 +110,39 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
     socket.onerror = (): void => {};
     socket.onclose = (): void => {
       this.socket = null;
+      this.emitStatus('disconnected');
+      if (this.subscribers.size > 0) {
+        this.scheduleReconnect();
+      }
     };
+  }
+
+  private emitStatus(s: 'connected' | 'reconnecting' | 'disconnected'): void {
+    if (!this.onStatus) return;
+    try {
+      this.onStatus(s);
+    } catch {
+      // Listener errors are swallowed to keep the feed alive.
+    }
+  }
+
+  private scheduleReconnect(): void {
+    this.clearReconnect();
+    const delayMs = Math.min(
+      this.maxReconnectDelayMs,
+      this.reconnectBaseDelayMs * Math.pow(2, this.reconnectAttempt++),
+    );
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.openSocketIfNeeded();
+    }, delayMs);
+  }
+
+  private clearReconnect(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
   }
 
   private sendSubscribe(): void {
@@ -159,6 +207,7 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
   }
 
   private closeSocket(): void {
+    this.clearReconnect();
     const socket = this.socket;
     this.socket = null;
     if (socket) {
