@@ -1,0 +1,61 @@
+{
+  "planPath": "docs/plans/2026-05-03-yfinance-browser.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 0: Workspace shell",
+      "status": "pending",
+      "description": "**Goal:** Make `browser/` a published-but-empty workspace package whose toolchain is wired to the repo root.\n\n**Files:**\n- Modify: `package.json` (root) — add `\"workspaces\": [\"browser\"]`\n- Create: `browser/package.json`, `browser/tsconfig.json`, `browser/tsup.config.ts`, `browser/vitest.config.ts`, `browser/README.md`, `browser/src/index.ts` (placeholder)\n\n**Verify:** `npm install && npm run build --workspace @livefolio/yfinance-browser && npm test --workspace @livefolio/yfinance-browser && npm test`\n\n```json:metadata\n{\"files\": [\"package.json\", \"browser/package.json\", \"browser/tsconfig.json\", \"browser/tsup.config.ts\", \"browser/vitest.config.ts\", \"browser/README.md\", \"browser/src/index.ts\"], \"verifyCommand\": \"npm install && npm run build --workspace @livefolio/yfinance-browser && npm test --workspace @livefolio/yfinance-browser && npm test\", \"acceptanceCriteria\": [\"npm install creates yfinance-browser workspace symlink\", \"build produces browser/dist/index.{js,d.ts}\", \"yfinance-browser test passes with no tests\", \"root npm test still passes\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 1: assetToYahooSymbol helper",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** Pure function mapping a v0.4 `Asset` to the symbol string Yahoo's WebSocket expects, with TDD.\n\n**Files:**\n- Create: `browser/src/asset.ts`, `browser/src/asset.test.ts`\n\n**Verify:** `npm test --workspace @livefolio/yfinance-browser -- asset.test`\n\n```json:metadata\n{\"files\": [\"browser/src/asset.ts\", \"browser/src/asset.test.ts\"], \"verifyCommand\": \"npm test --workspace @livefolio/yfinance-browser -- asset.test\", \"acceptanceCriteria\": [\"plain SPY passes through\", \"BRK.B becomes BRK-B\", \"non-equity kind throws with kind in message\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 2: decodeTicker protobuf decoder",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** Hand-rolled protobuf decoder for Yahoo's PricingData message — fields id (1), price (2), time (3, sint64), lastSize (22, sint64). Skip others via wire-type-aware advancement.\n\n**Files:**\n- Create: `browser/src/decode-ticker.ts`, `browser/src/decode-ticker.test.ts`\n\n**Verify:** `npm test --workspace @livefolio/yfinance-browser -- decode-ticker.test`\n\n```json:metadata\n{\"files\": [\"browser/src/decode-ticker.ts\", \"browser/src/decode-ticker.test.ts\"], \"verifyCommand\": \"npm test --workspace @livefolio/yfinance-browser -- decode-ticker.test\", \"acceptanceCriteria\": [\"round-trip id/price/time/lastSize\", \"skips unknown fields across all wire types\", \"lastSize undefined when absent\", \"negative time round-trips via zigzag\", \"unknown wire type terminates gracefully\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 3: YfinanceStreamingDataFeed — single-subscriber happy path",
+      "status": "pending",
+      "blockedBy": [2, 3],
+      "description": "**Goal:** First working version of the class — lazy connect, one subscribe() call, ticks yielded as StreamingBar, breaking the loop tears the socket down. Data structures designed for the full design upfront.\n\n**Files:**\n- Create: `browser/src/yfinance-streaming-data-feed.ts`, `browser/src/yfinance-streaming-data-feed.test.ts`\n\n**Verify:** `npm test --workspace @livefolio/yfinance-browser -- yfinance-streaming-data-feed.test`\n\n```json:metadata\n{\"files\": [\"browser/src/yfinance-streaming-data-feed.ts\", \"browser/src/yfinance-streaming-data-feed.test.ts\"], \"verifyCommand\": \"npm test --workspace @livefolio/yfinance-browser -- yfinance-streaming-data-feed.test\", \"acceptanceCriteria\": [\"lazy connect\", \"subscribe message on open\", \"BRK.B → BRK-B\", \"tick yields full StreamingBar\", \"volume defaults to 0 when lastSize absent\", \"drops unsubscribed/empty-id ticks\", \"break closes socket\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 4: Multi-subscriber refcounting",
+      "status": "pending",
+      "blockedBy": [4],
+      "description": "**Goal:** Two subscribe() calls share one WebSocket; symbol stays subscribed until last consumer detaches.\n\n**Files:**\n- Modify: `browser/src/yfinance-streaming-data-feed.test.ts` (append tests)\n- Modify: `browser/src/yfinance-streaming-data-feed.ts` (Task 3's data structures already support this; fix only if a test fails)\n\n**Verify:** `npm test --workspace @livefolio/yfinance-browser`\n\n```json:metadata\n{\"files\": [\"browser/src/yfinance-streaming-data-feed.test.ts\", \"browser/src/yfinance-streaming-data-feed.ts\"], \"verifyCommand\": \"npm test --workspace @livefolio/yfinance-browser\", \"acceptanceCriteria\": [\"one shared socket across calls\", \"shared symbols deliver to both\", \"partial detach keeps socket open\", \"full detach closes socket\", \"new symbol re-sends subscribe\", \"tracked-only symbol no re-send\", \"refcount→0 sends trimmed subscribe\"]}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 5: Reconnection with backoff + onStatus callback",
+      "status": "pending",
+      "blockedBy": [5],
+      "description": "**Goal:** Exponential backoff reconnect (500→1000→…→8000ms cap), reset on successful open, re-send full subscription, lifecycle status callback.\n\n**Files:**\n- Modify: `browser/src/yfinance-streaming-data-feed.ts`, `browser/src/yfinance-streaming-data-feed.test.ts`\n\n**Verify:** `npm test --workspace @livefolio/yfinance-browser`\n\n```json:metadata\n{\"files\": [\"browser/src/yfinance-streaming-data-feed.ts\", \"browser/src/yfinance-streaming-data-feed.test.ts\"], \"verifyCommand\": \"npm test --workspace @livefolio/yfinance-browser\", \"acceptanceCriteria\": [\"status lifecycle reconnecting→connected→disconnected\", \"exponential backoff 500/1000/2000ms\", \"delay capped at maxReconnectDelayMs\", \"successful connect resets backoff\", \"full subscription re-sent after reconnect\", \"iterator stays alive across gap\", \"throwing onStatus isolated\"]}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 6: onError callback + close() method",
+      "status": "pending",
+      "blockedBy": [6],
+      "description": "**Goal:** Surface decode/socket errors via onError; iterator never throws. close() terminates iterators cleanly and prevents reconnects.\n\n**Files:**\n- Modify: `browser/src/yfinance-streaming-data-feed.ts`, `browser/src/yfinance-streaming-data-feed.test.ts`\n\n**Verify:** `npm test --workspace @livefolio/yfinance-browser`\n\n```json:metadata\n{\"files\": [\"browser/src/yfinance-streaming-data-feed.ts\", \"browser/src/yfinance-streaming-data-feed.test.ts\"], \"verifyCommand\": \"npm test --workspace @livefolio/yfinance-browser\", \"acceptanceCriteria\": [\"onError on decode failure, iteration continues\", \"onError on socket error\", \"throwing onError isolated\", \"close() resolves waiters with done:true\", \"close() prevents reconnect\", \"subscribe after close returns done iterator\", \"close() idempotent\"]}\n```"
+    },
+    {
+      "id": 8,
+      "subject": "Task 7: Public index.ts and final verification",
+      "status": "pending",
+      "blockedBy": [7],
+      "description": "**Goal:** Publish public surface; run lint/format/build/test as the final gate.\n\n**Files:**\n- Modify: `browser/src/index.ts`\n\n**Verify:** `npm run lint --workspace @livefolio/yfinance-browser && npm run format:check --workspace @livefolio/yfinance-browser && npm test --workspace @livefolio/yfinance-browser && npm run build --workspace @livefolio/yfinance-browser && npm test`\n\n```json:metadata\n{\"files\": [\"browser/src/index.ts\"], \"verifyCommand\": \"npm run lint --workspace @livefolio/yfinance-browser && npm run format:check --workspace @livefolio/yfinance-browser && npm test --workspace @livefolio/yfinance-browser && npm run build --workspace @livefolio/yfinance-browser && npm test\", \"acceptanceCriteria\": [\"five exports in index.ts\", \"dist/index.d.ts contains all exports\", \"lint clean\", \"format:check clean\", \"all yfinance-browser tests pass\", \"root npm test passes\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-05-03T21:30:00Z"
+}
