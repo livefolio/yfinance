@@ -5,7 +5,7 @@ import {
   fromSpec,
   runBacktest,
   FeatureRuntime,
-  USEquityCalendar,
+  NYSEExchangeCalendar,
   MemoryFeatureCache,
   BacktestExecutor,
 } from '@livefolio/sdk';
@@ -46,7 +46,7 @@ function multiFixtureFetcher(map: Record<string, string>) {
 describe('integration: YfinanceDataFeed + tactical/v0 + runBacktest', () => {
   it('runs a binary SMA-crossover spec end to end and produces deterministic snapshots', async () => {
     const range: DateRange = { from: utc('2020-06-01'), to: utc('2020-12-31') };
-    const calendar = new USEquityCalendar();
+    const calendar = new NYSEExchangeCalendar();
 
     const dataFeed = new YfinanceDataFeed({
       fetcher: multiFixtureFetcher({ SPY: SPY_FIXTURE, IEF: IEF_FIXTURE }),

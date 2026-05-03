@@ -1,4 +1,4 @@
-# @livefolio/datafeed-yfinance
+# @livefolio/yfinance
 
 ## Purpose
 Yahoo Finance `DataFeed` adapter for `@livefolio/sdk` v0.4. Wraps the `yahoo-finance2` npm library to implement the SDK's `DataFeed.bars` interface — resolves `Asset` to a Yahoo symbol, calls Yahoo's `chart` endpoint, normalizes the response to v0.4 `Bar[]` (UTC-midnight timestamps, OHLCV from Yahoo's adjusted-close path), and applies a structural completeness filter that drops in-progress today bars without hardcoding US-market hours.
@@ -9,7 +9,7 @@ The package is intentionally thin: it owns one capability (`bars` at `1d`), defe
 
 | File | Description |
 |------|-------------|
-| `package.json` | Project manifest — `@livefolio/datafeed-yfinance`, ES module, Node >=20 |
+| `package.json` | Project manifest — `@livefolio/yfinance`, ES module, Node >=20 |
 | `tsconfig.json` | TypeScript strict mode, ES2022 target, bundler module resolution, `noUncheckedIndexedAccess` |
 | `tsup.config.ts` | tsup bundler configuration, `@livefolio/sdk` marked external |
 | `vitest.config.ts` | Vitest test runner configuration |
