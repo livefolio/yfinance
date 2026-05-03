@@ -215,3 +215,79 @@ describe('YfinanceStreamingDataFeed — happy path', () => {
     expect(latestWS().readyState).toBe(MockWebSocket.CLOSED);
   });
 });
+
+describe('YfinanceStreamingDataFeed — multi-subscriber refcount', () => {
+  it('shares one socket across two subscribe() calls', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    void feed.subscribe([QQQ])[Symbol.asyncIterator]().next();
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('delivers ticks for shared symbols to both subscribers', async () => {
+    const feed = makeFeed();
+    const iterA = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const iterB = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const nextA = iterA.next();
+    const nextB = iterB.next();
+    latestWS().simulateOpen();
+    latestWS().simulateMessage(buildTickerBase64('SPY', 100, 1700000000000));
+    const [a, b] = await Promise.all([nextA, nextB]);
+    expect((a.value as StreamingBar).bar.close).toBe(100);
+    expect((b.value as StreamingBar).bar.close).toBe(100);
+    await iterA.return?.();
+    await iterB.return?.();
+  });
+
+  it('keeps socket open while at least one subscriber remains', async () => {
+    const feed = makeFeed();
+    const iterA = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const iterB = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    void iterA.next();
+    void iterB.next();
+    latestWS().simulateOpen();
+
+    await iterA.return?.();
+    expect(latestWS().readyState).toBe(MockWebSocket.OPEN);
+
+    await iterB.return?.();
+    expect(latestWS().readyState).toBe(MockWebSocket.CLOSED);
+  });
+
+  it('updates subscription when a subscribe() adds a new symbol', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    expect(latestWS().sent).toEqual([JSON.stringify({ subscribe: ['SPY'] })]);
+
+    void feed.subscribe([QQQ])[Symbol.asyncIterator]().next();
+    expect(latestWS().sent).toEqual([
+      JSON.stringify({ subscribe: ['SPY'] }),
+      JSON.stringify({ subscribe: ['SPY', 'QQQ'] }),
+    ]);
+  });
+
+  it('does not re-send when a subscribe() adds only already-tracked symbols', () => {
+    const feed = makeFeed();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    latestWS().simulateOpen();
+    void feed.subscribe([SPY])[Symbol.asyncIterator]().next();
+    expect(latestWS().sent).toEqual([JSON.stringify({ subscribe: ['SPY'] })]);
+  });
+
+  it('updates subscription when a refcount drops to zero', async () => {
+    const feed = makeFeed();
+    const iterA = feed.subscribe([SPY])[Symbol.asyncIterator]();
+    const iterB = feed.subscribe([QQQ])[Symbol.asyncIterator]();
+    void iterA.next();
+    void iterB.next();
+    latestWS().simulateOpen();
+
+    await iterA.return?.();
+    expect(latestWS().sent).toEqual([
+      JSON.stringify({ subscribe: ['SPY', 'QQQ'] }),
+      JSON.stringify({ subscribe: ['QQQ'] }),
+    ]);
+    await iterB.return?.();
+  });
+});
