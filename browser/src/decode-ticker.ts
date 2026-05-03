@@ -18,6 +18,9 @@ export interface Ticker {
   lastSize: number | undefined;
 }
 
+// 32-bit-safe varint reader for protobuf tags and length-delimited length prefixes.
+// Returns [value, bytesConsumed]. For sint64 fields (time, lastSize) use readVarint64
+// instead — Number arithmetic loses precision past 2^53.
 function readVarint(bytes: Uint8Array, offset: number): [number, number] {
   let result = 0;
   let shift = 0;

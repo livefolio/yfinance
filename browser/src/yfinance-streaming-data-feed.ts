@@ -144,6 +144,9 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
       }
     };
     socket.onerror = (event: Event): void => {
+      // Browsers fire onerror with a plain Event that carries no error detail —
+      // the `instanceof Error` branch fires only in tests that pass a real Error
+      // through the mock's simulateError(); production always sees the fallback.
       this.emitError(event instanceof Error ? event : new Error('WebSocket error'));
     };
     socket.onclose = (): void => {
@@ -195,6 +198,9 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
 
   private sendSubscribe(): void {
     if (!this.socket || this.socket.readyState !== this.socket.OPEN) return;
+    // Order is intentional: Map iterates in insertion order, so symbols ship in
+    // the order they were first subscribed. Tests assert on this — switching to
+    // Set or sorting would break them.
     const symbols = Array.from(this.refCounts.keys()).filter((s) => (this.refCounts.get(s) ?? 0) > 0);
     if (symbols.length === 0) return;
     this.socket.send(JSON.stringify({ subscribe: symbols }));
@@ -259,6 +265,11 @@ export class YfinanceStreamingDataFeed implements StreamingDataFeed {
     const socket = this.socket;
     this.socket = null;
     if (socket) {
+      // Detach all handlers before close() to suppress the reconnect-trigger in
+      // onclose AND to drop any final buffered onmessage/onerror after teardown.
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
       socket.onclose = null;
       socket.close();
     }
