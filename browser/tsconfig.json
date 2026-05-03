@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@livefolio/sdk": ["../node_modules/@livefolio/sdk/src/index.ts"],
+      "@livefolio/sdk/interfaces": ["../node_modules/@livefolio/sdk/src/interfaces/index.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

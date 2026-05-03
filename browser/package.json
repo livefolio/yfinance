@@ -1,0 +1,50 @@
+{
+  "name": "@livefolio/yfinance-browser",
+  "version": "0.1.0",
+  "description": "Browser-safe Yahoo Finance StreamingDataFeed for @livefolio/sdk v0.4. Pure ESM, zero Node builtins.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "keywords": [
+    "yahoo-finance",
+    "streaming-data-feed",
+    "websocket",
+    "livefolio",
+    "browser"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/livefolio/yfinance.git",
+    "directory": "browser"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@livefolio/sdk": "^0.4.0"
+  },
+  "devDependencies": {
+    "@livefolio/sdk": "file:../../sdk"
+  }
+}
