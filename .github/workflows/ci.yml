@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+
+      - run: npm run build --workspace=browser
+      - run: npm run lint --workspace=browser
+      - run: npm test --workspace=browser
+
+  version-guard:
+    # If a PR touches src/ (root) or browser/src/, the matching package.json
+    # version must be bumped. Merging without a bump would block the release
+    # job on main (which only publishes when the version is ahead of npm),
+    # silently shipping nothing — this check fails loudly at PR time instead.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version bumps when src/ changes
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          BASE_SHA=$(git merge-base "origin/${BASE_REF}" HEAD)
+
+          check_pkg() {
+            local label="$1"
+            local src_path="$2"
+            local pkg_path="$3"
+
+            local changed
+            changed=$(git diff --name-only "${BASE_SHA}" HEAD -- "${src_path}" | wc -l | tr -d ' ')
+
+            if [ "$changed" = "0" ]; then
+              echo "[$label] No changes under ${src_path}; version bump not required."
+              return 0
+            fi
+
+            local current previous
+            current=$(node -p "require('./${pkg_path}').version")
+            previous=$(git show "${BASE_SHA}:${pkg_path}" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version")
+
+            if [ "$current" = "$previous" ]; then
+              echo "::error::[${label}] ${src_path} changed but ${pkg_path} version is unchanged ($current). Bump the version (e.g. 'npm version patch --no-git-tag-version --workspace=browser') before merging."
+              return 1
+            fi
+
+            echo "[$label] Version bumped: $previous -> $current (${src_path} touched $changed file(s))."
+          }
+
+          fail=0
+          check_pkg yfinance src/ package.json || fail=1
+          check_pkg yfinance-browser browser/src/ browser/package.json || fail=1
+          exit $fail
+
+  release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      # Compare against the version actually on npm, not git history. The
+      # HEAD-vs-HEAD^ heuristic is fooled by orphaned merge commits and silently
+      # skips publishing. `npm view` is the source of truth: if package.json is
+      # ahead of npm, publish; otherwise skip.
+      - name: Check which packages need publishing
+        id: version
+        run: |
+          ROOT_CURRENT=$(node -p "require('./package.json').version")
+          ROOT_PUBLISHED=$(npm view @livefolio/yfinance version 2>/dev/null || echo "none")
+          if [ "$ROOT_CURRENT" = "$ROOT_PUBLISHED" ]; then
+            echo "root_changed=false" >> "$GITHUB_OUTPUT"
+            echo "yfinance: $ROOT_CURRENT already on npm; skipping."
+          else
+            echo "root_changed=true" >> "$GITHUB_OUTPUT"
+            echo "root_version=$ROOT_CURRENT" >> "$GITHUB_OUTPUT"
+            echo "yfinance: publish $ROOT_CURRENT (last on npm: $ROOT_PUBLISHED)"
+          fi
+
+          BROWSER_CURRENT=$(node -p "require('./browser/package.json').version")
+          BROWSER_PUBLISHED=$(npm view @livefolio/yfinance-browser version 2>/dev/null || echo "none")
+          if [ "$BROWSER_CURRENT" = "$BROWSER_PUBLISHED" ]; then
+            echo "browser_changed=false" >> "$GITHUB_OUTPUT"
+            echo "yfinance-browser: $BROWSER_CURRENT already on npm; skipping."
+          else
+            echo "browser_changed=true" >> "$GITHUB_OUTPUT"
+            echo "browser_version=$BROWSER_CURRENT" >> "$GITHUB_OUTPUT"
+            echo "yfinance-browser: publish $BROWSER_CURRENT (last on npm: $BROWSER_PUBLISHED)"
+          fi
+
+      - run: npm ci
+        if: steps.version.outputs.root_changed == 'true' || steps.version.outputs.browser_changed == 'true'
+
+      - run: npm run build
+        if: steps.version.outputs.root_changed == 'true'
+
+      - name: Publish @livefolio/yfinance
+        if: steps.version.outputs.root_changed == 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release for @livefolio/yfinance
+        if: steps.version.outputs.root_changed == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.root_version }}"
+          gh release create "yfinance-v${VERSION}" --title "yfinance v${VERSION}" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: npm run build --workspace=browser
+        if: steps.version.outputs.browser_changed == 'true'
+
+      - name: Publish @livefolio/yfinance-browser
+        if: steps.version.outputs.browser_changed == 'true'
+        run: npm publish --access public --workspace=browser
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release for @livefolio/yfinance-browser
+        if: steps.version.outputs.browser_changed == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.browser_version }}"
+          gh release create "yfinance-browser-v${VERSION}" --title "yfinance-browser v${VERSION}" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
