@@ -45,6 +45,6 @@
     "@livefolio/sdk": "^0.4.0"
   },
   "devDependencies": {
-    "@livefolio/sdk": "file:../../sdk"
+    "@livefolio/sdk": "^0.4.0"
   }
 }

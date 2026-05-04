@@ -11,16 +11,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noUncheckedIndexedAccess": true,
-    "baseUrl": ".",
-    "paths": {
-      "@livefolio/sdk": ["./node_modules/@livefolio/sdk/src/index.ts"],
-      "@livefolio/sdk/interfaces": ["./node_modules/@livefolio/sdk/src/interfaces/index.ts"],
-      "@livefolio/sdk/strategy": ["./node_modules/@livefolio/sdk/src/strategy/index.ts"],
-      "@livefolio/sdk/features": ["./node_modules/@livefolio/sdk/src/features/index.ts"],
-      "@livefolio/sdk/tactical": ["./node_modules/@livefolio/sdk/src/tactical/index.ts"],
-      "@livefolio/sdk/reference": ["./node_modules/@livefolio/sdk/src/reference/index.ts"]
-    }
+    "noUncheckedIndexedAccess": true
   },
   "include": ["src", "test"],
   "exclude": ["node_modules", "dist"]

@@ -6,7 +6,7 @@
 - **Strict TypeScript**: `strict: true`, `noUncheckedIndexedAccess: true`
 - **Tests**: Co-located `*.test.ts` files, run with `npm test` (Vitest)
 - **Formatting**: Prettier on save, ESLint with typescript-eslint rules
-- **SDK consumption**: `@livefolio/sdk` is a *peer* dependency in published terms and a *file:../sdk* dev dependency in this checkout. Subpath imports (`@livefolio/sdk/tactical`, `/strategy`, `/features`, `/reference`, `/interfaces`) are wired through `tsconfig.json#paths` + `vitest.config.ts#resolve.alias` because the SDK's main barrel doesn't yet re-export the v0.4 surface.
+- **SDK consumption**: `@livefolio/sdk` is a peer dependency, devDep-pinned to `^0.4.0` from the npm registry. All v0.4 types are re-exported from the main barrel — import from bare `@livefolio/sdk`, no subpath imports needed.
 
 ## Key Commands
 
@@ -22,7 +22,7 @@
 
 ## Do Not
 
-- **Don't edit anything in `../sdk/`** from this repo — the SDK is consumed read-only via the `file:../sdk` link. Changes to the SDK live in their own repo and commits.
+- **Don't edit anything in `node_modules/@livefolio/sdk/`** — the SDK is consumed read-only from the npm registry. Changes to the SDK live in its own repo, are published, then bumped here.
 - **Don't make live network calls in tests** — every `*.test.ts` mocks the Yahoo client via `vi.mock` or injects a fixture-backed fetcher. The only sanctioned network code is `test/fixtures/record.ts`, run by hand.
 - **Don't hand-edit `test/fixtures/*.json`** — they are captured Yahoo responses and must be refreshed via `npm run fixtures:record` so they stay representative of real provider output.
 - **Don't pair `YfinanceDataFeed` with a live broker `Executor`** — bars are total-return-adjusted (Yahoo's `adjclose/close` ratio applied uniformly to OHL), which is correct for backtests but breaks limit-order semantics and historical re-scaling for live trading. For live, use the broker's own data feed (e.g. a future `@livefolio/alpaca` exporting both `DataFeed` and `Executor`).
