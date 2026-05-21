@@ -1,6 +1,6 @@
 {
   "name": "@livefolio/yfinance",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Yahoo Finance adapters for @livefolio/sdk v0.4. Node-only DataFeed (yahoo-finance2 historical bars). For browser-safe streaming, see @livefolio/yfinance-browser.",
   "type": "module",
   "main": "./dist/index.js",
@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@livefolio/sdk": "^0.4.0",
+    "@livefolio/sdk": "^0.4.2",
     "@types/node": "^25.6.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",

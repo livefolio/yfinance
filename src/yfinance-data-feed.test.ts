@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Asset, Bar, DateRange } from '@livefolio/sdk';
+import type { Asset, Bar, DateRange, Quote } from '@livefolio/sdk';
 import { YfinanceDataFeed } from './yfinance-data-feed';
 
 const utc = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -93,5 +93,35 @@ describe('YfinanceDataFeed', () => {
     const feed = new YfinanceDataFeed();
     expect('fundamentals' in feed).toBe(false);
     expect('events' in feed).toBe(false);
+  });
+
+  describe('QuoteFeed', () => {
+    it('quote() delegates to the injected quote fetcher and returns its result', async () => {
+      const expected: Quote = { asset: SPY, t: utc('2026-05-20'), price: 500 };
+      const quoteFetcher = vi.fn(async () => expected);
+      const feed = new YfinanceDataFeed({ quoteFetcher });
+      const q = await feed.quote(SPY);
+      expect(q).toBe(expected);
+      expect(quoteFetcher).toHaveBeenCalledWith(SPY);
+    });
+
+    it('quoteBatch() delegates to the injected batch fetcher and preserves order', async () => {
+      const quoteBatchFetcher = vi.fn(async (assets: ReadonlyArray<Asset>) =>
+        assets.map((a, i) => ({ asset: a, t: utc('2026-05-20'), price: 100 + i })),
+      );
+      const feed = new YfinanceDataFeed({ quoteBatchFetcher });
+      const qs = await feed.quoteBatch([SPY, QQQ]);
+      expect(qs.map((q) => q.asset.symbol)).toEqual(['SPY', 'QQQ']);
+      expect(qs.map((q) => q.price)).toEqual([100, 101]);
+      expect(quoteBatchFetcher).toHaveBeenCalledWith([SPY, QQQ]);
+    });
+
+    it('does not cache quotes — each quote() call hits the fetcher', async () => {
+      const quoteFetcher = vi.fn(async (a: Asset) => ({ asset: a, t: utc('2026-05-20'), price: 1 }));
+      const feed = new YfinanceDataFeed({ quoteFetcher });
+      await feed.quote(SPY);
+      await feed.quote(SPY);
+      expect(quoteFetcher).toHaveBeenCalledTimes(2);
+    });
   });
 });
