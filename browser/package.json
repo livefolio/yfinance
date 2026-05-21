@@ -1,7 +1,7 @@
 {
   "name": "@livefolio/yfinance-browser",
-  "version": "0.1.0",
-  "description": "Browser-safe Yahoo Finance StreamingDataFeed for @livefolio/sdk v0.4. Pure ESM, zero Node builtins.",
+  "version": "0.2.0",
+  "description": "Browser-safe Yahoo Finance StreamingDataFeed and QuoteFeed for @livefolio/sdk v0.4. Pure ESM, zero Node builtins.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,6 +9,7 @@
   "keywords": [
     "yahoo-finance",
     "streaming-data-feed",
+    "quote-feed",
     "websocket",
     "livefolio",
     "browser"
