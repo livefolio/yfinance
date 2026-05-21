@@ -28,7 +28,7 @@ The package is intentionally thin: it owns one capability (`bars` at `1d`), defe
 
 ### Working In This Directory
 - This is an ES module project (`"type": "module"`) — extensionless imports, bundled with tsup
-- The SDK is consumed as a peer dependency, devDep-pinned to `^0.4.0` from the npm registry
+- The SDK is consumed as a peer dependency, devDep-pinned to `^0.4.2` from the npm registry
 - `@livefolio/sdk` is marked `external` in `tsup.config.ts` so it is never inlined into `dist/`
 
 ### Testing Requirements

@@ -6,7 +6,7 @@
 - **Strict TypeScript**: `strict: true`, `noUncheckedIndexedAccess: true`
 - **Tests**: Co-located `*.test.ts` files, run with `npm test` (Vitest)
 - **Formatting**: Prettier on save, ESLint with typescript-eslint rules
-- **SDK consumption**: `@livefolio/sdk` is a peer dependency, devDep-pinned to `^0.4.0` from the npm registry. All v0.4 types are re-exported from the main barrel — import from bare `@livefolio/sdk`, no subpath imports needed.
+- **SDK consumption**: `@livefolio/sdk` is a peer dependency, devDep-pinned to `^0.4.2` from the npm registry. All v0.4 types are re-exported from the main barrel — import from bare `@livefolio/sdk`, no subpath imports needed.
 
 ## Key Commands
 
