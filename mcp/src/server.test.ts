@@ -78,3 +78,54 @@ describe('get_quote', () => {
     expect(textOf(res)).toContain('no quote returned for ZZZZ');
   });
 });
+
+describe('get_quotes', () => {
+  it('is listed as a read-only tool', async () => {
+    const client = await connect(makeDeps());
+    const { tools } = await client.listTools();
+    const t = tools.find((x) => x.name === 'get_quotes');
+    expect(t).toBeDefined();
+    expect(t!.annotations?.readOnlyHint).toBe(true);
+    expect(t!.annotations?.openWorldHint).toBe(true);
+  });
+
+  it('preserves input order', async () => {
+    const client = await connect(makeDeps());
+    const res = await client.callTool({ name: 'get_quotes', arguments: { symbols: ['SPY', 'QQQ'] } });
+    expect(res.isError).toBeFalsy();
+    const quotes = (res.structuredContent as { quotes: Array<{ symbol: string; price: number }> }).quotes;
+    expect(quotes.map((q) => q.symbol)).toEqual(['SPY', 'QQQ']);
+    expect(quotes.map((q) => q.price)).toEqual([100, 101]);
+  });
+
+  it('passes equity assets in order to the batch fetcher', async () => {
+    const fetchQuoteBatch = vi.fn(
+      async (assets: ReadonlyArray<Asset>): Promise<Quote[]> =>
+        assets.map((a) => ({ asset: a, t: utc('2026-06-13'), price: 1 })),
+    );
+    const client = await connect(makeDeps({ fetchQuoteBatch }));
+    await client.callTool({ name: 'get_quotes', arguments: { symbols: ['SPY', 'QQQ'] } });
+    expect(fetchQuoteBatch).toHaveBeenCalledWith([
+      { kind: 'equity', id: 'yf:SPY', symbol: 'SPY' },
+      { kind: 'equity', id: 'yf:QQQ', symbol: 'QQQ' },
+    ]);
+  });
+
+  it('fails the whole call if the adapter throws on any symbol', async () => {
+    const fetchQuoteBatch = vi.fn(async (): Promise<Quote[]> => {
+      throw new Error('yfinance: no quote returned for ZZZZ');
+    });
+    const client = await connect(makeDeps({ fetchQuoteBatch }));
+    const res = await client.callTool({ name: 'get_quotes', arguments: { symbols: ['SPY', 'ZZZZ'] } });
+    expect(res.isError).toBe(true);
+    expect(textOf(res)).toContain('no quote returned for ZZZZ');
+  });
+
+  it('rejects a blank symbol in the array before any adapter call', async () => {
+    const fetchQuoteBatch = vi.fn(async (): Promise<Quote[]> => []);
+    const client = await connect(makeDeps({ fetchQuoteBatch }));
+    const res = await client.callTool({ name: 'get_quotes', arguments: { symbols: ['SPY', '  '] } });
+    expect(res.isError).toBe(true);
+    expect(fetchQuoteBatch).not.toHaveBeenCalled();
+  });
+});
