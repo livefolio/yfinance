@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ServerDeps } from '../deps';
 import { equityAsset } from '../deps';
 import { quoteToOutput, quoteSummary, type QuoteOut } from '../format';
+import { errorResult } from '../result';
 
 const quoteOutputShape = {
   symbol: z.string(),
@@ -12,11 +13,6 @@ const quoteOutputShape = {
   bid: z.number().optional(),
   ask: z.number().optional(),
 };
-
-const errorResult = (message: string) => ({
-  content: [{ type: 'text' as const, text: `Error: ${message}` }],
-  isError: true,
-});
 
 export function registerQuoteTools(server: McpServer, deps: ServerDeps): void {
   server.registerTool(
