@@ -33,6 +33,7 @@
   "scripts": {
     "build": "tsup",
     "prepack": "tsup",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
