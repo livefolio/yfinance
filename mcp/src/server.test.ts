@@ -129,3 +129,121 @@ describe('get_quotes', () => {
     expect(fetchQuoteBatch).not.toHaveBeenCalled();
   });
 });
+
+describe('get_daily_bars', () => {
+  const argsOf = (over: Record<string, unknown> = {}) => ({
+    symbol: 'AAPL',
+    from: '2024-01-01',
+    to: '2024-01-31',
+    ...over,
+  });
+
+  it('is listed as a read-only tool', async () => {
+    const client = await connect(makeDeps());
+    const { tools } = await client.listTools();
+    const t = tools.find((x) => x.name === 'get_daily_bars');
+    expect(t).toBeDefined();
+    expect(t!.annotations?.readOnlyHint).toBe(true);
+    expect(t!.annotations?.openWorldHint).toBe(true);
+  });
+
+  it('maps bars to compact rows with count and range echo', async () => {
+    const fetchBars = vi.fn(
+      async (): Promise<Bar[]> => [
+        { t: utc('2024-01-02'), open: 10, high: 12, low: 9, close: 11, volume: 1000 },
+        { t: utc('2024-01-03'), open: 11, high: 13, low: 10, close: 12.5, volume: 1100 },
+      ],
+    );
+    const client = await connect(makeDeps({ fetchBars }));
+    const res = await client.callTool({ name: 'get_daily_bars', arguments: argsOf() });
+    expect(res.isError).toBeFalsy();
+    const sc = res.structuredContent as {
+      count: number;
+      from: string;
+      to: string;
+      bars: Array<Record<string, number | string>>;
+    };
+    expect(sc.count).toBe(2);
+    expect(sc.from).toBe('2024-01-01');
+    expect(sc.to).toBe('2024-01-31');
+    expect(sc.bars[0]).toEqual({ t: '2024-01-02', o: 10, h: 12, l: 9, c: 11, v: 1000 });
+    expect(textOf(res)).toContain('2 daily bars');
+  });
+
+  it('normalizes the symbol before fetching (BRK.B → BRK-B)', async () => {
+    const fetchBars: ServerDeps['fetchBars'] = vi.fn(async () => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    await client.callTool({ name: 'get_daily_bars', arguments: argsOf({ symbol: 'BRK.B' }) });
+    expect((fetchBars as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toBe('BRK-B');
+  });
+
+  it('forwards includeIncompleteToday (default false, then true)', async () => {
+    const fetchBars: ServerDeps['fetchBars'] = vi.fn(async () => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    await client.callTool({ name: 'get_daily_bars', arguments: argsOf() });
+    expect((fetchBars as ReturnType<typeof vi.fn>).mock.calls[0]![3]).toEqual({ includeIncompleteToday: false });
+    await client.callTool({ name: 'get_daily_bars', arguments: argsOf({ includeIncompleteToday: true }) });
+    expect((fetchBars as ReturnType<typeof vi.fn>).mock.calls[1]![3]).toEqual({ includeIncompleteToday: true });
+  });
+
+  it('passes a UTC-midnight DateRange to the adapter', async () => {
+    const fetchBars: ServerDeps['fetchBars'] = vi.fn(async () => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    await client.callTool({ name: 'get_daily_bars', arguments: argsOf() });
+    const range = (fetchBars as ReturnType<typeof vi.fn>).mock.calls[0]![1] as { from: Date; to: Date };
+    expect(range.from.toISOString()).toBe('2024-01-01T00:00:00.000Z');
+    expect(range.to.toISOString()).toBe('2024-01-31T00:00:00.000Z');
+  });
+
+  it('rejects from > to without calling the adapter', async () => {
+    const fetchBars = vi.fn(async (): Promise<Bar[]> => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    const res = await client.callTool({
+      name: 'get_daily_bars',
+      arguments: argsOf({ from: '2024-02-01', to: '2024-01-01' }),
+    });
+    expect(res.isError).toBe(true);
+    expect(fetchBars).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed dates without calling the adapter', async () => {
+    const fetchBars = vi.fn(async (): Promise<Bar[]> => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    const res = await client.callTool({ name: 'get_daily_bars', arguments: argsOf({ from: 'nope' }) });
+    expect(res.isError).toBe(true);
+    expect(fetchBars).not.toHaveBeenCalled();
+  });
+
+  it('rejects calendar-invalid from date (Feb 30) without calling the adapter', async () => {
+    const fetchBars = vi.fn(async (): Promise<Bar[]> => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    const res = await client.callTool({
+      name: 'get_daily_bars',
+      arguments: argsOf({ from: '2024-02-30', to: '2024-03-31' }),
+    });
+    expect(res.isError).toBe(true);
+    expect(fetchBars).not.toHaveBeenCalled();
+  });
+
+  it('rejects calendar-invalid to date (Apr 31) without calling the adapter', async () => {
+    const fetchBars = vi.fn(async (): Promise<Bar[]> => []);
+    const client = await connect(makeDeps({ fetchBars }));
+    const res = await client.callTool({
+      name: 'get_daily_bars',
+      arguments: argsOf({ from: '2024-04-01', to: '2024-04-31' }),
+    });
+    expect(res.isError).toBe(true);
+    expect(fetchBars).not.toHaveBeenCalled();
+  });
+
+  it('treats an empty range as a normal (non-error) result', async () => {
+    const client = await connect(makeDeps({ fetchBars: vi.fn(async (): Promise<Bar[]> => []) }));
+    const res = await client.callTool({
+      name: 'get_daily_bars',
+      arguments: argsOf({ from: '2024-01-01', to: '2024-01-01' }),
+    });
+    expect(res.isError).toBeFalsy();
+    expect((res.structuredContent as { count: number }).count).toBe(0);
+    expect(textOf(res)).toContain('no bars');
+  });
+});

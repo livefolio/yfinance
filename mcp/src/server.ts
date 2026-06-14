@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { defaultDeps, type ServerDeps } from './deps';
 import { registerQuoteTools } from './tools/quote';
+import { registerBarsTool } from './tools/bars';
 
 export type { ServerDeps } from './deps';
 
@@ -13,5 +14,6 @@ export const SERVER_VERSION = '0.1.0';
 export function createServer(deps: ServerDeps = defaultDeps): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
   registerQuoteTools(server, deps);
+  registerBarsTool(server, deps);
   return server;
 }
