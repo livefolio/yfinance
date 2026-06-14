@@ -60,6 +60,8 @@ export function registerBarsTool(server: McpServer, deps: ServerDeps): void {
       if (!fromD || !toD) return errorResult('from/to must be valid dates in YYYY-MM-DD format.');
       if (fromD.getTime() > toD.getTime()) return errorResult('from must be on or before to.');
       try {
+        // fetchBars takes a raw symbol string, so normalize here (the quote tools instead pass an
+        // Asset and let the adapter normalize internally — same result, different adapter signature).
         const yahooSymbol = assetToYahooSymbol(equityAsset(sym));
         const range: DateRange = { from: fromD, to: toD };
         const bars = await deps.fetchBars(yahooSymbol, range, '1d', {
