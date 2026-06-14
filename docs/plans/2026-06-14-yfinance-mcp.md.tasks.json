@@ -1,0 +1,47 @@
+{
+  "planPath": "docs/plans/2026-06-14-yfinance-mcp.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Workspace shell",
+      "status": "completed",
+      "description": "**Goal:** Make `mcp/` a published-but-empty workspace package wired to the repo root; confirm the `@livefolio/yfinance` adapter import resolves.\n\n**Files:** root `package.json` (add `mcp` to workspaces), `mcp/package.json`, `mcp/tsconfig.json`, `mcp/tsup.config.ts` (shebang banner), `mcp/vitest.config.ts`, `mcp/README.md` (stub), `mcp/src/index.ts` (placeholder).\n\n**Verify:** `npm install && npm run build --workspace @livefolio/yfinance && node --input-type=module -e \"import('@livefolio/yfinance').then(m=>{const miss=['fetchYahooBars','fetchYahooQuoteForAsset','fetchYahooQuoteBatchForAssets','assetToYahooSymbol'].filter(k=>typeof m[k]!=='function');if(miss.length){process.exit(1)}console.log('adapter OK')})\" && npm run build --workspace @livefolio/yfinance-mcp && head -1 mcp/dist/index.js && npm test --workspace @livefolio/yfinance-mcp && npm test`\n\n```json:metadata\n{\"files\":[\"package.json\",\"mcp/package.json\",\"mcp/tsconfig.json\",\"mcp/tsup.config.ts\",\"mcp/vitest.config.ts\",\"mcp/README.md\",\"mcp/src/index.ts\"],\"verifyCommand\":\"npm install && npm run build --workspace @livefolio/yfinance && npm run build --workspace @livefolio/yfinance-mcp && npm test --workspace @livefolio/yfinance-mcp && npm test\",\"acceptanceCriteria\":[\"workspace symlink created\",\"adapter import OK\",\"mcp build emits shebang bin\",\"mcp test exits 0\",\"root test still green\"]}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: format.ts pure output shapers",
+      "status": "completed",
+      "blockedBy": [0],
+      "description": "**Goal:** Pure `Quote`/`Bar[]` → output-shape + summary functions (no MCP, no adapter, no I/O). TDD first.\n\n**Files:** Create `mcp/src/format.ts`, `mcp/src/format.test.ts`.\n\n**Verify:** `npm test --workspace @livefolio/yfinance-mcp`\n\n```json:metadata\n{\"files\":[\"mcp/src/format.ts\",\"mcp/src/format.test.ts\"],\"verifyCommand\":\"npm test --workspace @livefolio/yfinance-mcp\",\"acceptanceCriteria\":[\"quoteToOutput omits absent optionals\",\"barsToOutput compact rows + count\",\"barsSummary empty vs non-empty\",\"tests green\"]}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Server harness + get_quote",
+      "status": "completed",
+      "blockedBy": [1],
+      "description": "**Goal:** `createServer(deps?)` with the injectable `ServerDeps` seam + register `get_quote`. Prove request/response via `InMemoryTransport`, including read-only annotations on discovery.\n\n**Files:** Create `mcp/src/deps.ts`, `mcp/src/server.ts`, `mcp/src/tools/quote.ts` (get_quote only), `mcp/src/server.test.ts`.\n\n**Verify:** `npm test --workspace @livefolio/yfinance-mcp`\n\n```json:metadata\n{\"files\":[\"mcp/src/deps.ts\",\"mcp/src/server.ts\",\"mcp/src/tools/quote.ts\",\"mcp/src/server.test.ts\"],\"verifyCommand\":\"npm test --workspace @livefolio/yfinance-mcp\",\"acceptanceCriteria\":[\"get_quote listed read-only/open-world\",\"structuredContent + summary\",\"asset symbol verbatim\",\"empty rejected; adapter throw → isError\",\"tests green\"]}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: get_quotes batch tool",
+      "status": "completed",
+      "blockedBy": [2],
+      "description": "**Goal:** Add batch `get_quotes` to `tools/quote.ts`. One round-trip; preserves input order; any unknown symbol fails the whole call.\n\n**Files:** Modify `mcp/src/tools/quote.ts`; add tests to `mcp/src/server.test.ts`.\n\n**Verify:** `npm test --workspace @livefolio/yfinance-mcp`\n\n```json:metadata\n{\"files\":[\"mcp/src/tools/quote.ts\",\"mcp/src/server.test.ts\"],\"verifyCommand\":\"npm test --workspace @livefolio/yfinance-mcp\",\"acceptanceCriteria\":[\"get_quotes listed read-only\",\"order preserved\",\"assets in order to batch fetcher\",\"adapter throw → isError; blank rejected\",\"tests green\"]}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: get_daily_bars tool",
+      "status": "completed",
+      "blockedBy": [2],
+      "description": "**Goal:** Add `get_daily_bars` with YYYY-MM-DD parse/validation, symbol normalization via `assetToYahooSymbol`, `includeIncompleteToday` passthrough. Empty range is non-error.\n\n**Files:** Create `mcp/src/tools/bars.ts`; modify `mcp/src/server.ts` (register); add tests to `mcp/src/server.test.ts`.\n\n**Verify:** `npm test --workspace @livefolio/yfinance-mcp`\n\n```json:metadata\n{\"files\":[\"mcp/src/tools/bars.ts\",\"mcp/src/server.ts\",\"mcp/src/server.test.ts\"],\"verifyCommand\":\"npm test --workspace @livefolio/yfinance-mcp\",\"acceptanceCriteria\":[\"get_daily_bars listed read-only\",\"compact rows + count + echo\",\"symbol normalized + UTC-midnight range\",\"includeIncompleteToday default false/forwarded\",\"bad dates/from>to isError; empty non-error\",\"tests green\"]}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Bin entrypoint, smoke test, README",
+      "status": "completed",
+      "blockedBy": [3, 4],
+      "description": "**Goal:** Replace placeholder `index.ts` with the real stdio entrypoint (transport + stderr-only crash handlers), prove the built binary speaks MCP over stdio, write the user-facing README.\n\n**Files:** Modify `mcp/src/index.ts`, `mcp/README.md`; create `mcp/src/smoke.test.ts`.\n\n**Verify:** `npm run build --workspace @livefolio/yfinance-mcp && npm test --workspace @livefolio/yfinance-mcp && npm test`\n\n```json:metadata\n{\"files\":[\"mcp/src/index.ts\",\"mcp/src/smoke.test.ts\",\"mcp/README.md\"],\"verifyCommand\":\"npm run build --workspace @livefolio/yfinance-mcp && npm test --workspace @livefolio/yfinance-mcp && npm test\",\"acceptanceCriteria\":[\"stdio transport, stderr-only\",\"crash handlers exit non-zero\",\"smoke test lists 3 tools\",\"build+test green; root unaffected\",\"README documents tools + claude mcp add\"]}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-14T20:55:00Z"
+}
