@@ -11,7 +11,8 @@
     "LICENSE"
   ],
   "workspaces": [
-    "browser"
+    "browser",
+    "mcp"
   ],
   "keywords": [
     "yahoo-finance",

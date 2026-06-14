@@ -30,6 +30,14 @@ jobs:
       - run: npm run lint --workspace=browser
       - run: npm test --workspace=browser
 
+      # mcp builds with tsup dts:false, so the build does NOT type-check (unlike
+      # root/browser which emit declarations). Run tsc --noEmit explicitly.
+      # Build before test: the smoke test spawns the built dist/index.js bin.
+      - run: npm run build --workspace=mcp
+      - run: npm run typecheck --workspace=mcp
+      - run: npm run lint --workspace=mcp
+      - run: npm test --workspace=mcp
+
   version-guard:
     # If a PR touches src/ (root) or browser/src/, the matching package.json
     # version must be bumped. Merging without a bump would block the release
@@ -62,6 +70,13 @@ jobs:
               return 0
             fi
 
+            # A brand-new package (no package.json at the base) has nothing to
+            # bump from — its first version is the initial release.
+            if ! git cat-file -e "${BASE_SHA}:${pkg_path}" 2>/dev/null; then
+              echo "[$label] ${pkg_path} is new in this PR; version bump not required."
+              return 0
+            fi
+
             local current previous
             current=$(node -p "require('./${pkg_path}').version")
             previous=$(git show "${BASE_SHA}:${pkg_path}" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version")
@@ -77,6 +92,7 @@ jobs:
           fail=0
           check_pkg yfinance src/ package.json || fail=1
           check_pkg yfinance-browser browser/src/ browser/package.json || fail=1
+          check_pkg yfinance-mcp mcp/src/ mcp/package.json || fail=1
           exit $fail
 
   release:
@@ -121,8 +137,19 @@ jobs:
             echo "yfinance-browser: publish $BROWSER_CURRENT (last on npm: $BROWSER_PUBLISHED)"
           fi
 
+          MCP_CURRENT=$(node -p "require('./mcp/package.json').version")
+          MCP_PUBLISHED=$(npm view @livefolio/yfinance-mcp version 2>/dev/null || echo "none")
+          if [ "$MCP_CURRENT" = "$MCP_PUBLISHED" ]; then
+            echo "mcp_changed=false" >> "$GITHUB_OUTPUT"
+            echo "yfinance-mcp: $MCP_CURRENT already on npm; skipping."
+          else
+            echo "mcp_changed=true" >> "$GITHUB_OUTPUT"
+            echo "mcp_version=$MCP_CURRENT" >> "$GITHUB_OUTPUT"
+            echo "yfinance-mcp: publish $MCP_CURRENT (last on npm: $MCP_PUBLISHED)"
+          fi
+
       - run: npm ci
-        if: steps.version.outputs.root_changed == 'true' || steps.version.outputs.browser_changed == 'true'
+        if: steps.version.outputs.root_changed == 'true' || steps.version.outputs.browser_changed == 'true' || steps.version.outputs.mcp_changed == 'true'
 
       - run: npm run build
         if: steps.version.outputs.root_changed == 'true'
@@ -155,5 +182,22 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.browser_version }}"
           gh release create "yfinance-browser-v${VERSION}" --title "yfinance-browser v${VERSION}" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: npm run build --workspace=mcp
+        if: steps.version.outputs.mcp_changed == 'true'
+
+      - name: Publish @livefolio/yfinance-mcp
+        if: steps.version.outputs.mcp_changed == 'true'
+        run: npm publish --access public --workspace=mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release for @livefolio/yfinance-mcp
+        if: steps.version.outputs.mcp_changed == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.mcp_version }}"
+          gh release create "yfinance-mcp-v${VERSION}" --title "yfinance-mcp v${VERSION}" --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

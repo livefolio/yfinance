@@ -4,6 +4,16 @@ Yahoo Finance `DataFeed` adapter for [`@livefolio/sdk`](https://github.com/livef
 
 > **Pre-1.0 — expect breaking changes.** Tracks the SDK's v0.4 surface (`@livefolio/sdk@^0.4.0`).
 
+## Packages
+
+This repo is an npm-workspaces monorepo publishing three packages:
+
+| Package | Path | Purpose |
+|---|---|---|
+| `@livefolio/yfinance` | `src/` | This package — Node `DataFeed`/`QuoteFeed` over `yahoo-finance2` (historical bars + quotes). |
+| [`@livefolio/yfinance-browser`](browser/README.md) | `browser/` | Browser-safe `StreamingDataFeed`/`QuoteFeed` over Yahoo's WebSocket (live ticks, zero Node builtins). |
+| [`@livefolio/yfinance-mcp`](mcp/README.md) | `mcp/` | Local stdio MCP server exposing this adapter's quotes & daily bars as three read-only agent tools. |
+
 ## Install
 
 ```sh

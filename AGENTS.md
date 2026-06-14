@@ -24,6 +24,15 @@ The package is intentionally thin: it owns one capability (`bars` at `1d`), defe
 | `test/fixtures/` | Recorded Yahoo responses for offline tests; `record.ts` is run by hand |
 | `docs/` | Design specs and implementation plans |
 
+## Workspaces
+
+This repo is an npm-workspaces monorepo. The root package (`@livefolio/yfinance`, source in `src/`) ships alongside two sibling workspaces, each self-contained with its own `package.json`, build, tests, and README:
+
+| Workspace | Package | Purpose |
+|-----------|---------|---------|
+| `browser/` | `@livefolio/yfinance-browser` | Browser-safe `StreamingDataFeed`/`QuoteFeed` over Yahoo's WebSocket (live ticks, zero Node builtins) |
+| `mcp/` | `@livefolio/yfinance-mcp` | Local stdio MCP server exposing this adapter's quotes & daily bars as three read-only agent tools (`get_quote`, `get_quotes`, `get_daily_bars`); runtime deps `@modelcontextprotocol/sdk` + `zod` |
+
 ## For AI Agents
 
 ### Working In This Directory
